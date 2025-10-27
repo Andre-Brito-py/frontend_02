@@ -182,6 +182,7 @@ export default function CashiersPage() {
   return (
     <Protected roles={['ADMIN']}>
       <Layout>
+        <h1 className="text-2xl font-semibold mb-6">Caixas</h1>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="card">
             <h2 className="text-xl font-semibold mb-4">Criar novo caixa</h2>
@@ -210,48 +211,27 @@ export default function CashiersPage() {
 
           <div className="card">
             <h2 className="text-xl font-semibold mb-4">Caixas cadastrados</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left">
-                <thead>
-                  <tr>
-                    <th className="px-3 py-2">Nome</th>
-                    <th className="px-3 py-2">Login</th>
-                    <th className="px-3 py-2">Email</th>
-                    <th className="px-3 py-2">Criado em</th>
-                    <th className="px-3 py-2">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map(u => (
-                    <tr key={u.id} className="border-t">
-                      <td className="px-3 py-2 font-medium">{u.name}</td>
-                      <td className="px-3 py-2 text-gray-700">{u.login}</td>
-                      <td className="px-3 py-2 text-gray-600">{u.email || '-'}</td>
-                      <td className="px-3 py-2 text-gray-600">{new Date(u.createdAt).toLocaleString()}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <button 
-                            className="btn btn-secondary" 
-                            disabled={rowLoading[u.id]} 
-                            onClick={() => startEdit(u)}
-                          >
-                            Editar
-                          </button>
-                          <button className="btn btn-danger" disabled={rowLoading[u.id]} onClick={() => deleteCashier(u.id)}>
-                            {rowLoading[u.id] ? '...' : 'Excluir'}
-                          </button>
-                        </div>
-                        {rowMsg[u.id] && <div className="text-sm mt-1 text-gray-600">{rowMsg[u.id]}</div>}
-                      </td>
-                    </tr>
-                  ))}
-                  {list.length === 0 && (
-                    <tr>
-                      <td className="px-3 py-2" colSpan={5}>Nenhum caixa cadastrado.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {list.map(u => (
+                <div key={u.id} className="rounded-lg border shadow-sm p-4 bg-white">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-lg font-semibold">{u.name}</div>
+                      <div className="text-sm text-gray-600">Login: {u.login}</div>
+                      <div className="text-sm text-gray-600">Email: {u.email || '-'}</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">Criado em: {new Date(u.createdAt).toLocaleString()}</div>
+                  <div className="mt-4 flex gap-2">
+                    <button className="btn btn-secondary" disabled={rowLoading[u.id]} onClick={() => startEdit(u)}>Editar</button>
+                    <button className="btn btn-danger" disabled={rowLoading[u.id]} onClick={() => deleteCashier(u.id)}>{rowLoading[u.id] ? '...' : 'Excluir'}</button>
+                  </div>
+                  {rowMsg[u.id] && <div className="text-sm mt-2 text-gray-600">{rowMsg[u.id]}</div>}
+                </div>
+              ))}
+              {list.length === 0 && (
+                <div className="text-gray-600">Nenhum caixa cadastrado.</div>
+              )}
             </div>
           </div>
         </div>

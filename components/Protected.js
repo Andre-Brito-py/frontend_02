@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 
 export default function Protected({ children, roles }) {
   const [ok, setOk] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
     if (!token) {
-      window.location.href = '/';
+      router.replace('/');
       return;
     }
     if (roles && roles.length > 0 && !roles.includes(role)) {
       // redireciona para página adequada
-      window.location.href = role === 'CAIXA' ? '/sales' : '/dashboard';
+      router.replace(role === 'CAIXA' ? '/sales' : '/dashboard');
       return;
     }
     setOk(true);
-  }, [roles]);
+  }, [roles, router]);
 
   if (!ok) return null;
   return children;

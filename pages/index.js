@@ -13,13 +13,20 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const { data } = await api.post('/api/auth/login', { login, password });
+      const payload = { login: login.trim(), password: password.trim() };
+      const { data } = await api.post('/api/auth/login', payload);
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.user.role);
       localStorage.setItem('name', data.user.name);
       window.location.href = data.user.role === 'ADMIN' ? '/dashboard' : '/sales';
     } catch (err) {
-      setError(err?.response?.data?.error || 'Credenciais inválidas');
+      const status = err?.response?.status;
+      let msg = err?.response?.data?.error
+        || (err?.request ? 'Falha de conexão com o servidor' : 'Erro ao autenticar');
+      if (status === 401) {
+        msg = 'Credenciais inválidas. Dica: o login é "AdminTeste" (não e-mail), com maiúsculas/minúsculas).';
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -33,7 +40,7 @@ export default function Login() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="label">Login</label>
-            <input className="input" value={login} onChange={e => setLogin(e.target.value)} />
+            <input className="input" placeholder="Ex.: AdminTeste" value={login} onChange={e => setLogin(e.target.value)} />
           </div>
           <div>
             <label className="label">Senha</label>

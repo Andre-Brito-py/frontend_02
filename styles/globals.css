@@ -5,8 +5,27 @@
 html, body, #__next { height: 100%; }
 body { @apply bg-gray-100 text-gray-900; }
 .container { @apply max-w-6xl mx-auto px-4; }
-.card { @apply bg-white shadow rounded p-4; }
-.btn { @apply px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700; }
-.input { @apply border rounded px-3 py-2 w-full; }
+.card { @apply bg-white shadow-sm rounded-lg p-5 border border-gray-200 overflow-hidden; }
+.btn { @apply inline-flex items-center justify-center px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors; }
+.btn-secondary { @apply px-4 py-2 rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300 transition-colors; }
+.btn-danger { @apply px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors; }
+.btn-outline { @apply px-4 py-2 rounded-md border border-gray-300 text-gray-800 hover:bg-gray-50; }
+.input { @apply border rounded-md px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500; }
 .select { @apply border rounded px-3 py-2 w-full; }
 .label { @apply text-sm text-gray-600; }
+
+/* Navegação */
+.nav { @apply space-x-4; }
+.nav a { @apply text-gray-700 hover:text-blue-700; }
+
+/* Cards de menu clicáveis */
+.menu-card { @apply bg-white border border-gray-200 rounded-lg shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer; }
+.menu-card-title { @apply text-lg font-semibold mb-1; }
+.menu-card-desc { @apply text-sm text-gray-600; }
+
+/* Botões suaves (visual mais sutil) */
+.btn-soft { @apply inline-flex items-center justify-center px-3 py-2 rounded-md border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 transition-colors; }
+.btn-soft-primary { @apply inline-flex items-center justify-center px-3 py-2 rounded-md border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors; }
+.btn-soft-success { @apply inline-flex items-center justify-center px-3 py-2 rounded-md border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 transition-colors; }
+.btn-soft-warning { @apply inline-flex items-center justify-center px-3 py-2 rounded-md border border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 transition-colors; }
+.btn-soft-danger { @apply inline-flex items-center justify-center px-3 py-2 rounded-md border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 transition-colors; }
