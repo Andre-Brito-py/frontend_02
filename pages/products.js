@@ -330,6 +330,8 @@ function AdditionalCategoriesManager() {
 export default function Products() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [additionalCategories, setAdditionalCategories] = useState([]);
+  const [selectedAdditionalCategoryIds, setSelectedAdditionalCategoryIds] = useState([]);
   const [form, setForm] = useState({ name: '', price: '', category: '', stock: 0, variablePrice: false });
   const [stockEnabled, setStockEnabled] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -340,12 +342,14 @@ export default function Products() {
   useEffect(() => { load(); }, []);
 
   async function load() {
-    const [prodRes, catRes] = await Promise.all([
+    const [prodRes, catRes, addCatRes] = await Promise.all([
       api.get(`/api/products${showSuspended ? '?includeSuspended=true' : ''}`),
-      api.get('/api/categories')
+      api.get('/api/categories'),
+      api.get('/api/additional-categories')
     ]);
     setProducts(prodRes.data);
     setCategories(catRes.data);
+    setAdditionalCategories(addCatRes.data || []);
   }
 
   useEffect(() => { load(); }, [showSuspended]);
@@ -368,14 +372,24 @@ export default function Products() {
       payload.stock = -1;
     }
     try {
+      let productId = editing;
       if (editing) {
-        await api.put(`/api/products/${editing}`, payload);
+        const { data: updated } = await api.put(`/api/products/${editing}`, payload);
+        productId = updated?.id ?? editing;
       } else {
-        await api.post('/api/products', payload);
+        const { data: created } = await api.post('/api/products', payload);
+        productId = created?.id;
+      }
+      // Atualizar vínculos de categorias de adicionais (se houver)
+      if (productId && Array.isArray(selectedAdditionalCategoryIds)) {
+        await api.put(`/api/products/${productId}/additional-categories`, {
+          categoryIds: selectedAdditionalCategoryIds,
+        });
       }
       setForm({ name: '', price: '', category: '', stock: 0, variablePrice: false });
       setStockEnabled(false);
       setEditing(null);
+      setSelectedAdditionalCategoryIds([]);
       load();
     } catch (err) {
       setMsg(err?.response?.data?.error || err.message || 'Falha ao salvar produto');
@@ -396,6 +410,10 @@ export default function Products() {
     setEditing(p.id);
     setForm({ name: p.name, price: p.price, category: p.category || '', stock: p.stock >= 0 ? p.stock : 0, variablePrice: !!p.variablePrice });
     setStockEnabled(p.stock >= 0);
+    // Carregar categorias de adicionais vinculadas ao produto em edição
+    api.get(`/api/products/${p.id}/additional-categories`).then(({ data }) => {
+      setSelectedAdditionalCategoryIds(Array.isArray(data) ? data.map(c => c.id) : []);
+    }).catch(() => setSelectedAdditionalCategoryIds([]));
   }
 
   async function toggleSuspended(p) {
@@ -445,6 +463,40 @@ export default function Products() {
                     <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="label flex items-center justify-between">
+                  <span>Categorias de adicionais do produto</span>
+                  <button type="button" className="text-blue-600 hover:underline text-sm" onClick={() => setTab('catAdicionais')}>Gerenciar categorias</button>
+                </label>
+                {additionalCategories.length === 0 && (
+                  <div className="text-sm text-gray-600">Nenhuma categoria de adicionais cadastrada.</div>
+                )}
+                {additionalCategories.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-auto p-2 border rounded">
+                    {additionalCategories.map(c => {
+                      const checked = selectedAdditionalCategoryIds.includes(c.id);
+                      return (
+                        <label key={c.id} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={e => {
+                              const on = e.target.checked;
+                              setSelectedAdditionalCategoryIds(prev => {
+                                const set = new Set(prev);
+                                if (on) set.add(c.id); else set.delete(c.id);
+                                return Array.from(set);
+                              });
+                            }}
+                          />
+                          <span>{c.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="text-xs text-gray-500 mt-1">Ao selecionar, os adicionais dessas categorias ficam disponíveis no PDV.</div>
               </div>
               <div>
                 <label className="label flex items-center gap-2">

@@ -205,10 +205,7 @@ export default function SalesPage() {
                 </select>
               </div>
               <div>
-                <div className="label flex items-center justify-between">
-                  <span>Adicionais (opcional)</span>
-                  <a href="/additionals" className="text-blue-600 hover:underline text-sm">Gerenciar adicionais</a>
-                </div>
+                <div className="label">Adicionais (opcional)</div>
                 {availableAdditionals.length === 0 && (
                   <div className="text-sm text-gray-600">Nenhum adicional disponível para este produto.</div>
                 )}
