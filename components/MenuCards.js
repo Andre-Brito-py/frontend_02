@@ -3,6 +3,7 @@ export default function MenuCards() {
     { title: 'Produtos', desc: 'Gerencie produtos e adicionais', href: '/products' },
     { title: 'Caixas', desc: 'Cadastre e edite operadores de caixa', href: '/cashiers' },
     { title: 'Pagamentos', desc: 'Defina formas de pagamento', href: '/payments' },
+    { title: 'Configurações', desc: 'Ajuste preferências do sistema', href: '/settings' },
   ];
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

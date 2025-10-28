@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import Protected from '../components/Protected';
 import api from '../lib/api';
+import Notification from '../components/Notification';
 
 export default function SalesPage() {
   const [products, setProducts] = useState([]);
@@ -15,11 +16,22 @@ export default function SalesPage() {
   const [paymentMethodId, setPaymentMethodId] = useState('');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  // Notificação sutil de sucesso/erro de venda
+  const [notify, setNotify] = useState({ type: 'success', message: '' });
   // Modal de preço variável
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [priceInput, setPriceInput] = useState('');
   const [priceProduct, setPriceProduct] = useState(null);
   const [priceQty, setPriceQty] = useState(1);
+
+  // Vendas recentes e edição
+  const [recentSales, setRecentSales] = useState([]);
+  const [recentLimit, setRecentLimit] = useState(10);
+  const [recentEnabled, setRecentEnabled] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSale, setEditSale] = useState(null);
+  const [editPaymentId, setEditPaymentId] = useState('');
+  const [editItems, setEditItems] = useState([]);
 
   useEffect(() => { loadLists(); }, []);
 
@@ -33,6 +45,20 @@ export default function SalesPage() {
       setPayments(pay);
       if (prod.length && !selectedProductId) setSelectedProductId(String(prod[0].id));
       if (pay.length && !paymentMethodId) setPaymentMethodId(String(pay[0].id));
+      // carregar configurações e vendas recentes
+      try {
+        const { data: settings } = await api.get('/api/settings');
+        const limit = settings?.recentSalesLimit || 10;
+        setRecentLimit(limit);
+        setRecentEnabled(settings?.recentSalesEnabled !== false);
+        if (settings?.recentSalesEnabled !== false) {
+          await loadRecent(limit);
+        } else {
+          setRecentSales([]);
+        }
+      } catch {
+        await loadRecent();
+      }
     } catch (err) {
       setMsg(err?.response?.data?.error || 'Falha ao carregar listas');
     }
@@ -137,6 +163,55 @@ export default function SalesPage() {
     setPriceInput('');
   }
 
+  async function loadRecent(limit) {
+    try {
+      const params = {};
+      if (limit) params.limit = limit;
+      const { data } = await api.get('/api/sales/recent', { params });
+      setRecentSales(data);
+    } catch (err) {
+      // silencioso
+    }
+  }
+
+  function openEdit(sale) {
+    setEditSale(sale);
+    setEditPaymentId(String(sale.paymentMethodId));
+    const items = sale.items.map(i => ({
+      saleItemId: i.id,
+      productId: i.productId,
+      name: i.product?.name || i.productId,
+      variablePrice: !!(i.product?.variablePrice),
+      quantity: i.quantity,
+      unitPrice: Number(i.unitPrice),
+      isDelivery: i.isDelivery,
+    }));
+    setEditItems(items);
+    setEditOpen(true);
+  }
+
+  async function saveEdit() {
+    try {
+      if (!editSale) return setEditOpen(false);
+      const payload = {
+        paymentMethodId: parseInt(String(editPaymentId)),
+        items: editItems.map(i => ({
+          productId: i.productId,
+          quantity: parseInt(String(i.quantity || 1)),
+          unitPrice: Number(i.unitPrice),
+          isDelivery: !!i.isDelivery,
+        })),
+      };
+      await api.put(`/api/sales/${editSale.id}`, payload);
+      setNotify({ type: 'success', message: 'Venda atualizada com sucesso.' });
+      setEditOpen(false);
+      setEditSale(null);
+      await loadRecent(recentLimit);
+    } catch (err) {
+      setNotify({ type: 'error', message: err?.response?.data?.error || 'Falha ao atualizar venda' });
+    }
+  }
+
   async function finalizeSale() {
     setLoading(true);
     setMsg('');
@@ -154,12 +229,15 @@ export default function SalesPage() {
         })),
       };
       await api.post('/api/sales', payload);
-      setMsg('Venda registrada com sucesso');
+      setNotify({ type: 'success', message: 'Venda registrada com sucesso.' });
       setCart([]);
       await loadLists(); // atualiza estoque visível
     } catch (err) {
       const aborted = String(err?.message || '').toLowerCase().includes('aborted');
-      setMsg(aborted ? 'Operação interrompida pelo navegador. Tente novamente.' : (err?.response?.data?.error || err.message || 'Falha ao registrar venda'));
+      const emsg = aborted
+        ? 'Operação interrompida pelo navegador. Tente novamente.'
+        : (err?.response?.data?.error || err.message || 'Falha ao registrar venda');
+      setNotify({ type: 'error', message: emsg });
     } finally {
       setLoading(false);
     }
@@ -310,6 +388,44 @@ export default function SalesPage() {
           </div>
         </div>
 
+        {recentEnabled && (
+        <div className="card mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Últimas vendas</h2>
+            <div className="text-sm text-gray-600">Mostrando últimas {recentLimit} vendas</div>
+          </div>
+          {recentSales.length === 0 && (
+            <div className="text-sm text-gray-600">Nenhuma venda recente.</div>
+          )}
+          {recentSales.length > 0 && (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="py-2">ID</th>
+                  <th>Data</th>
+                  <th>Pagamento</th>
+                  <th>Itens</th>
+                  <th>Total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentSales.map(s => (
+                  <tr key={s.id} className="border-b">
+                    <td className="py-2">#{s.id}</td>
+                    <td>{new Date(s.createdAt).toLocaleString('pt-BR')}</td>
+                    <td>{s.paymentMethod?.name || s.paymentMethodId}</td>
+                    <td>{s.items.map(i => `${i.product?.name || i.productId} x${i.quantity}`).join(', ')}</td>
+                    <td>R$ {Number(s.total).toFixed(2)}</td>
+                    <td className="text-right"><button className="btn" onClick={() => openEdit(s)}>Editar</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        )}
+
         {priceModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="bg-white rounded-lg shadow-lg p-5 w-full max-w-md">
@@ -345,7 +461,74 @@ export default function SalesPage() {
             </div>
           </div>
         )}
+
+        {editOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-lg shadow-lg p-5 w-full max-w-3xl">
+              <h3 className="text-lg font-semibold mb-3">Editar venda #{editSale?.id}</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="label">Forma de pagamento</label>
+                  <select className="input" value={editPaymentId} onChange={e => setEditPaymentId(e.target.value)}>
+                    {payments.map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}
+                  </select>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left">
+                      <th className="py-2">Produto</th>
+                      <th>Qtd</th>
+                      <th>Unitário</th>
+                      <th>Tipo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editItems.map((it, idx) => (
+                      <tr key={it.productId} className="border-b">
+                        <td className="py-2">{it.name}</td>
+                        <td>
+                          <input className="input w-24" type="number" min="1" value={it.quantity} onChange={e => {
+                            const v = parseInt(e.target.value || '1');
+                            setEditItems(prev => prev.map((x,i) => i===idx ? { ...x, quantity: v } : x));
+                          }} />
+                        </td>
+                        <td>
+                          {it.variablePrice ? (
+                            <input className="input w-28" type="number" min="0.01" step="0.01" value={it.unitPrice} onChange={e => {
+                              const v = Number(e.target.value || '0');
+                              setEditItems(prev => prev.map((x,i) => i===idx ? { ...x, unitPrice: v } : x));
+                            }} />
+                          ) : (
+                            <span>R$ {Number(it.unitPrice).toFixed(2)}</span>
+                          )}
+                        </td>
+                        <td>
+                          <select className="input" value={it.isDelivery ? 'delivery' : 'presencial'} onChange={e => {
+                            const v = e.target.value === 'delivery';
+                            setEditItems(prev => prev.map((x,i) => i===idx ? { ...x, isDelivery: v } : x));
+                          }}>
+                            <option value="presencial">Presencial</option>
+                            <option value="delivery">Delivery</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button className="btn" onClick={() => { setEditOpen(false); setEditSale(null); }}>Cancelar</button>
+                  <button className="btn" onClick={saveEdit}>Salvar alterações</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </Layout>
+      <Notification
+        type={notify.type}
+        message={notify.message}
+        onClose={() => setNotify({ ...notify, message: '' })}
+      />
     </Protected>
   );
 }

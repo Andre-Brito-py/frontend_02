@@ -342,14 +342,26 @@ export default function Products() {
   useEffect(() => { load(); }, []);
 
   async function load() {
-    const [prodRes, catRes, addCatRes] = await Promise.all([
-      api.get(`/api/products${showSuspended ? '?includeSuspended=true' : ''}`),
-      api.get('/api/categories'),
-      api.get('/api/additional-categories')
-    ]);
-    setProducts(prodRes.data);
-    setCategories(catRes.data);
-    setAdditionalCategories(addCatRes.data || []);
+    try {
+      // Evita chamadas sem autenticação (primeiro render antes do Protected liberar)
+      if (typeof window !== 'undefined' && !localStorage.getItem('token')) return;
+      const [prodRes, catRes, addCatRes] = await Promise.all([
+        api.get(`/api/products${showSuspended ? '?includeSuspended=true' : ''}`),
+        api.get('/api/categories'),
+        api.get('/api/additional-categories')
+      ]);
+      setProducts(prodRes.data);
+      setCategories(catRes.data);
+      setAdditionalCategories(addCatRes.data || []);
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) {
+        // sessão inválida/expirada — deixe o Protected cuidar do redirecionamento
+        setMsg('Sessão expirada. Redirecionando para login...');
+        return;
+      }
+      setMsg(err?.response?.data?.error || err.message || 'Falha ao carregar dados');
+    }
   }
 
   useEffect(() => { load(); }, [showSuspended]);
@@ -357,6 +369,13 @@ export default function Products() {
   async function save(e) {
     e.preventDefault();
     setMsg('');
+    // Garante autenticação antes de enviar (evita 401 por token ausente)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (!token) {
+      setMsg('Sessão expirada. Faça login novamente.');
+      if (typeof window !== 'undefined') setTimeout(() => { window.location.href = '/'; }, 800);
+      return;
+    }
     const vp = !!form.variablePrice;
     const priceRaw = form.price === '' ? null : parseFloat(form.price);
     const payload = { 
@@ -374,16 +393,22 @@ export default function Products() {
     try {
       let productId = editing;
       if (editing) {
-        const { data: updated } = await api.put(`/api/products/${editing}`, payload);
+        const { data: updated } = await api.put(`/api/products/${editing}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         productId = updated?.id ?? editing;
       } else {
-        const { data: created } = await api.post('/api/products', payload);
+        const { data: created } = await api.post('/api/products', payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         productId = created?.id;
       }
       // Atualizar vínculos de categorias de adicionais (se houver)
       if (productId && Array.isArray(selectedAdditionalCategoryIds)) {
         await api.put(`/api/products/${productId}/additional-categories`, {
           categoryIds: selectedAdditionalCategoryIds,
+        }, {
+          headers: { Authorization: `Bearer ${token}` },
         });
       }
       setForm({ name: '', price: '', category: '', stock: 0, variablePrice: false });
@@ -392,6 +417,19 @@ export default function Products() {
       setSelectedAdditionalCategoryIds([]);
       load();
     } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) {
+        setMsg('Sessão expirada. Faça login novamente.');
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          setTimeout(() => { window.location.href = '/'; }, 800);
+        }
+        return;
+      }
+      if (status === 403) {
+        setMsg('Acesso negado. Somente ADMIN pode cadastrar produtos.');
+        return;
+      }
       setMsg(err?.response?.data?.error || err.message || 'Falha ao salvar produto');
     }
   }

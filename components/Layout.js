@@ -5,6 +5,8 @@ export default function Layout({ children }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setRole(localStorage.getItem('role'));
+      const theme = localStorage.getItem('theme');
+      document.documentElement.classList.toggle('dark', theme === 'dark');
     }
   }, []);
 
@@ -21,6 +23,7 @@ export default function Layout({ children }) {
                 <a className="hover:underline" href="/payments">Pagamentos</a>
                 <a className="hover:underline" href="/sales">Vendas</a>
                 <a className="hover:underline" href="/cashiers">Caixas</a>
+                <a className="hover:underline" href="/settings">Configurações</a>
               </>
             )}
             {role === 'CAIXA' && (
