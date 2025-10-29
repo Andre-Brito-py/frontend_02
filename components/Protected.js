@@ -6,8 +6,8 @@ export default function Protected({ children, roles }) {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const role = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
     if (!token) {
       router.replace('/');
       return;
@@ -18,7 +18,7 @@ export default function Protected({ children, roles }) {
       return;
     }
     setOk(true);
-  }, [roles, router]);
+  }, []);
 
   if (!ok) return null;
   return children;

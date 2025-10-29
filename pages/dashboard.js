@@ -144,6 +144,19 @@ export default function Dashboard() {
     }
   }
 
+  async function deleteSale(id) {
+    try {
+      const ok = window.confirm('Excluir esta venda permanentemente?');
+      if (!ok) return;
+      await api.delete(`/api/sales/${id}`);
+      // Atualiza lista local rapidamente
+      setSales(prev => prev.filter(s => s.id !== id));
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.error || 'Falha ao excluir venda');
+    }
+  }
+
   async function downloadExcel() {
     try {
       const params = {};
@@ -457,6 +470,7 @@ export default function Dashboard() {
                   <th className="text-left p-2 border">Pagamento</th>
                   <th className="text-left p-2 border">Itens</th>
                   <th className="text-right p-2 border">Total (R$)</th>
+                  <th className="text-right p-2 border w-28">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -476,12 +490,22 @@ export default function Dashboard() {
                         </div>
                       </td>
                       <td className="p-2 border text-right">{Number(totalVisible).toFixed(2)}</td>
+                      <td className="p-2 border text-right">
+                        <button
+                          className="btn-danger px-3 py-1 text-xs rounded"
+                          aria-label="Excluir venda"
+                          title="Excluir venda"
+                          onClick={() => deleteSale(s.id)}
+                        >
+                          Excluir
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
                 {sales.length === 0 && (
                     <tr>
-                      <td className="p-2 border text-center" colSpan={5}>Nenhuma venda no período</td>
+                      <td className="p-2 border text-center" colSpan={6}>Nenhuma venda no período</td>
                     </tr>
                   )}
                 </tbody>
