@@ -70,12 +70,21 @@ export default function Dashboard() {
 
   async function loadSummary() {
     try {
-      const { data } = await api.get('/api/reports/summary');
+      const params = {};
+      if (deliveryType !== 'todos') params.delivery = deliveryType;
+      const { data } = await api.get('/api/reports/summary', { params });
       setSummary(data);
     } catch (err) {
       console.warn('Falha ao carregar resumo:', err?.response?.status);
     }
   }
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const role = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
+    if (!token || role !== 'ADMIN') return;
+    loadSummary();
+  }, [deliveryType]);
 
   async function loadRevenue() {
     try {
