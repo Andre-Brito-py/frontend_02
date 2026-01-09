@@ -243,6 +243,22 @@ export default function SalesPage() {
     }
   }
 
+  async function emitNFCe(saleId) {
+    if (!confirm('Deseja emitir NFC-e para esta venda?')) return;
+    try {
+      setLoading(true);
+      const { data } = await api.post(`/api/fiscal/emit/${saleId}`);
+      if (data.success) {
+        setNotify({ type: 'success', message: `NFC-e emitida! Status: ${data.invoice.status}` });
+        if (data.invoice.pdfUrl) window.open(data.invoice.pdfUrl, '_blank');
+      }
+    } catch (err) {
+      setNotify({ type: 'error', message: err?.response?.data?.error || err.message || 'Erro ao emitir NFC-e' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <Protected roles={['ADMIN', 'CAIXA']}>
       <Layout>
@@ -417,7 +433,10 @@ export default function SalesPage() {
                     <td>{s.paymentMethod?.name || s.paymentMethodId}</td>
                     <td>{s.items.map(i => `${i.product?.name || i.productId} x${i.quantity}`).join(', ')}</td>
                     <td>R$ {Number(s.total).toFixed(2)}</td>
-                    <td className="text-right"><button className="btn" onClick={() => openEdit(s)}>Editar</button></td>
+                    <td className="text-right flex gap-2 justify-end">
+                      <button className="btn btn-sm bg-green-600 hover:bg-green-700 text-white" onClick={() => emitNFCe(s.id)}>NFC-e</button>
+                      <button className="btn btn-sm" onClick={() => openEdit(s)}>Editar</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

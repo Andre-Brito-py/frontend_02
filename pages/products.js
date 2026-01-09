@@ -332,7 +332,10 @@ export default function Products() {
   const [categories, setCategories] = useState([]);
   const [additionalCategories, setAdditionalCategories] = useState([]);
   const [selectedAdditionalCategoryIds, setSelectedAdditionalCategoryIds] = useState([]);
-  const [form, setForm] = useState({ name: '', price: '', category: '', stock: 0, variablePrice: false });
+  const [form, setForm] = useState({ 
+    name: '', price: '', category: '', stock: 0, variablePrice: false,
+    ncm: '', cest: '', origin: '0', cfop: '5102'
+  });
   const [stockEnabled, setStockEnabled] = useState(false);
   const [editing, setEditing] = useState(null);
   const [msg, setMsg] = useState('');
@@ -382,7 +385,11 @@ export default function Products() {
       name: form.name, 
       price: vp ? (Number.isFinite(priceRaw) ? priceRaw : 0) : priceRaw, 
       category: form.category || null, 
-      variablePrice: vp 
+      variablePrice: vp,
+      ncm: form.ncm,
+      cest: form.cest,
+      origin: parseInt(form.origin),
+      cfop: form.cfop
     };
     if (stockEnabled) {
       const s = parseInt(String(form.stock || '0'));
@@ -411,7 +418,10 @@ export default function Products() {
           headers: { Authorization: `Bearer ${token}` },
         });
       }
-      setForm({ name: '', price: '', category: '', stock: 0, variablePrice: false });
+      setForm({ 
+        name: '', price: '', category: '', stock: 0, variablePrice: false,
+        ncm: '', cest: '', origin: '0', cfop: '5102'
+      });
       setStockEnabled(false);
       setEditing(null);
       setSelectedAdditionalCategoryIds([]);
@@ -446,7 +456,10 @@ export default function Products() {
 
   function edit(p) {
     setEditing(p.id);
-    setForm({ name: p.name, price: p.price, category: p.category || '', stock: p.stock >= 0 ? p.stock : 0, variablePrice: !!p.variablePrice });
+    setForm({ 
+      name: p.name, price: p.price, category: p.category || '', stock: p.stock >= 0 ? p.stock : 0, variablePrice: !!p.variablePrice,
+      ncm: p.ncm || '', cest: p.cest || '', origin: String(p.origin || '0'), cfop: p.cfop || '5102'
+    });
     setStockEnabled(p.stock >= 0);
     // Carregar categorias de adicionais vinculadas ao produto em edição
     api.get(`/api/products/${p.id}/additional-categories`).then(({ data }) => {
@@ -484,6 +497,30 @@ export default function Products() {
                 <label className="label">Preço</label>
                 <input className="input" type="number" step="0.01" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} />
               </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="label">NCM</label>
+                  <input className="input" placeholder="0000.00.00" value={form.ncm} onChange={e => setForm({ ...form, ncm: e.target.value })} maxLength={10} />
+                </div>
+                <div>
+                  <label className="label">CEST</label>
+                  <input className="input" value={form.cest} onChange={e => setForm({ ...form, cest: e.target.value })} maxLength={7} />
+                </div>
+                <div>
+                  <label className="label">CFOP</label>
+                  <input className="input" value={form.cfop} onChange={e => setForm({ ...form, cfop: e.target.value })} maxLength={4} />
+                </div>
+                <div>
+                  <label className="label">Origem</label>
+                  <select className="input" value={form.origin} onChange={e => setForm({ ...form, origin: e.target.value })}>
+                    <option value="0">0 - Nacional</option>
+                    <option value="1">1 - Estrangeira (Imp. Direta)</option>
+                    <option value="2">2 - Estrangeira (Adq. Interna)</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="label flex items-center gap-2">
                   <input type="checkbox" checked={form.variablePrice} onChange={e => setForm({ ...form, variablePrice: e.target.checked })} />
